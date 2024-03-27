@@ -18,7 +18,7 @@ data <- data %>%
         mutate_if(is.character, as.numeric) %>%
         mutate_at("sample_id", as.character) %>%
         arrange(group) 
-## Cleaning metadata
+## Reading and Cleaning metadata
 metadata <- read.csv2("data/MetaDATA_Ghada.csv",  header=TRUE, check.names = FALSE) %>%
      dplyr::rename(resection_type = `Resect type GBC`) %>%
      mutate(Death = gsub('alive', '0', Death)) %>%
@@ -27,6 +27,7 @@ metadata <- read.csv2("data/MetaDATA_Ghada.csv",  header=TRUE, check.names = FAL
      mutate(CRP0 = na_if(CRP0, "m")) %>%
      mutate_if(is.character, as.numeric) %>%
      mutate_at("resection_type", as.character)
+###Table prepared for statistics on bmi, sex etc (table 1)
 stat <- read.csv2("results/Paper_illustratios/stat_table.csv") 
 
 
@@ -52,7 +53,7 @@ datatable(stat,
 
 
 ## ----sex, fig.cap="Proportions of females (F) and males (M) in the cohort"-------------------
-###Defining bmi and age categories
+###Defining bmi and age categories then plotting them
 metadata %>% 
    mutate(DiagPostop = gsub('0', 'Control', DiagPostop)) %>%
   mutate(DiagPostop = gsub('4', 'Cancer', DiagPostop)) %>%
@@ -212,7 +213,6 @@ metadata %>%
 
 ## ----SVD, message=FALSE, warning=FALSE, paged.print=FALSE, fig.keep='last', echo=FALSE, results='hide'----
 ###Singlar value decomposition analysis
-# pdf(file = "results/Paper_illustratios/SVD_analysis_conf.pdf")
 champ.SVD(beta = as.data.frame(t(data %>%
                                    # filter(group == 0) %>%
                                    arrange(sample_id) %>%
@@ -231,9 +231,6 @@ champ.SVD(beta = as.data.frame(t(data %>%
                              mutate_at("Death", as.factor) %>%
                              # select(group, Gender, age_cat, bmi_cat, Diabetes, PSC, Cirrhosis)))
                              select(group, CRP0, Alb, pT, CA199, Brb0, `pN#pos`, Death)))
-# while (!is.null(dev.list()))  dev.off()
 
-#### no effect: resection_type (when does the surgeon know ground truth?), Radiology (should have it? to see how different radiologies still could not predict mal vs ben?), Immsup (all have no preoperative immunosupressors), pN, `pN#`, pM, Metastasis, pLV, pPN, pR (all of these have many NAs), R1Margin (many NAs), Death (later check NAs) DeathOrLastFUDate (NA, left for later), OStime (Overall survival, many NAs, left for later), PAD (diag? not indicated in the key file), remove CA199? (why do we have so many missing CA199?), pN#pos: number of positive nodes (some GBC had 0 nodes?!, many NAs in both groups)
 
-### Don't make sense to look at: DiagPostop (= group), DiagPreop (all are 4 : GBC), DiagDate, Date1Surgery, AgeatDiagn (rep by age_cat), BirthDate, DiagDate, Date1Surgery, selection (= 1), `order original`, `reoredr to facilitate data collection`, `reorder for file transfert ernesto`, comment, sample_id)
 
