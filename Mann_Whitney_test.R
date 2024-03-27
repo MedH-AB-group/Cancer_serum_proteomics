@@ -23,10 +23,8 @@ data <- data %>%
         mutate_if(is.character, as.numeric) %>%
         mutate_at("sample_id", as.character) %>%
         arrange(group) 
+##scaling the data
 scaled_data <- cbind(data[1:2], as.data.frame(scale(data[3:length(data)])))
-
-
-
 
 
 
@@ -38,11 +36,12 @@ components <- data.frame(prin_comp[["x"]]) %>%
           mutate(group = replace(group, group == "0", "Benign tumor")) %>%
           mutate(group = replace(group, group == "4", "Gallbladder cancer")) %>%
           select(group, sample_id))  
+
 fviz_eig(prin_comp, scale = TRUE, addlabels=TRUE)  ##Eigen values
+
 ###Visualize and plot the PCA to see how data points look like according to all proteomic data
 plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group, 
         colors = c("#0b5313", "#ec4dd8"), type = 'scatter', mode = 'markers', showlegend = T) %>%  
-  # add_text(text=~components$group, textposition="top center", showlegend = F) %>% 
   layout(
     legend = list(title = "Patients"),
     plot_bgcolor='#e5ecf6',
@@ -56,7 +55,7 @@ plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group,
       zerolinecolor = "#ffff",
       zerolinewidth = 2,
       gridcolor='#ffff')) 
- # save_image("results/Paper_illustratios/PCA_allptn.pdf")
+
 
 
 ## ----marginal_desnisties------------------------------------------------------------------------------------------------------------------
@@ -64,17 +63,17 @@ plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group,
 components <- components %>%
   select(-sample_id) %>%
   pivot_longer(1:2)
-# pdf(file = "results/Paper_illustratios/PCA_allptn_marginal_densities.pdf")
+
 ggplot(components, aes(x = value, color = group)) +
   geom_density(alpha = 2) + 
   scale_color_manual(values = c("#0b5313", "#ec4dd8")) +
   labs(color = "Patients group") +    # Customize legend label
   theme_minimal() 
- # while (!is.null(dev.list()))  dev.off()
+
 
 
 ## ----Mann_whitney, message=F, warning=FALSE-----------------------------------------------------------------------------------------------
-###Wilcoxon test, Not paired (independant data, no one to one match like longitudinal data)
+###Wilcoxon test, Not paired (independant data, no one to one match like longitudinal data), U-test (MannWhitney)
 lev1 <- which(data$group %in% "4")
 lev2 <- which(data$group %in% "0")
 t_data <- t(scaled_data %>% select(-sample_id, -group))
@@ -94,7 +93,8 @@ colnames(wilcox_res) <- c("p.value", "adj.p.val", "Fold.change",
                     paste("Mean", paste("GBC", collapse = "_"), sep = "_"),
                     paste("Mean", paste("Benign", collapse = "_"), sep = "_"))
 # save(wilcox_res, file = "results/wilcox.RData")
-###Save significant proteins with differen tthresholds
+
+###Save significant proteins with differen tthresholds to visualize with PCA
 proteins <- rownames(wilcox_res)
 sig_proteins <- as_data_frame(wilcox_res) 
 sig_proteins$proteins <- proteins
@@ -121,11 +121,12 @@ components <- data.frame(prin_comp[["x"]]) %>%
           mutate(group = replace(group, group == "0", "B")) %>%
           mutate(group = replace(group, group == "4", "GBC")) %>%
           select(group, sample_id))  
+
 fviz_eig(prin_comp, scale = TRUE)  ##Eigen values
+
 plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group, 
         colors = c("#0b5313", "#ec4dd8"), type = 'scatter', mode = 'markers', showlegend = T) %>%  
-  # add_text(text=~components$group, textposition="top center",
-  #           showlegend = F) %>% 
+
   layout(
     legend = list(title = "Patients"),
     plot_bgcolor='#e5ecf6',
@@ -142,6 +143,7 @@ plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group,
 components <- components %>%
   select(-sample_id) %>%
   pivot_longer(1:2)
+
 # Create a density plot with faceting
 ggplot(components, aes(x = value, color = group)) +
   geom_density(alpha = 0.5) + 
@@ -187,11 +189,11 @@ sig_data <- scaled_data[,c("sample_id", "group", sig_proteins1$proteins)] %>% mu
 prin_comp <- prcomp(sig_data %>% dplyr::select(-group))
 components <- data.frame(prin_comp[["x"]]) %>% 
                mutate (data %>% select(group))
+
 fviz_eig(prin_comp, scale = TRUE)
+
 plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group, 
         colors = c("#0b5313", "#ec4dd8"), type = 'scatter', mode = 'markers', showlegend = T) %>%  
-  # add_text(text=~components$group, textposition="top center",
-  #           showlegend = F) %>% 
   layout(
     legend = list(title = "Patients"),
     plot_bgcolor='#e5ecf6',
@@ -213,11 +215,11 @@ sig_data <- scaled_data[,c("sample_id", "group", sig_proteins01$proteins)] %>% m
 prin_comp <- prcomp(sig_data %>% dplyr::select(-group))
 components <- data.frame(prin_comp[["x"]]) %>% 
                mutate (data %>% select(group))
+
 fviz_eig(prin_comp, scale = TRUE)
+
 plot_ly(components, x = ~PC1, y = ~PC2, color = ~components$group, 
         colors = c("#0b5313", "#ec4dd8"), type = 'scatter', mode = 'markers', showlegend = T) %>%  
-  # add_text(text=~components$group, textposition="top center",
-  #           showlegend = F) %>% 
   layout(
     legend = list(title = "Patients"),
     plot_bgcolor='#e5ecf6',
