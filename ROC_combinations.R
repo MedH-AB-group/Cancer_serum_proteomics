@@ -24,32 +24,20 @@ data <- read.csv2("data/protein_screening.csv")
         mutate_if(is.character, as.numeric) %>%
         mutate_at(c("sample_id", "group"), as.character) %>%
         arrange(group) 
+
+##Scaling the data
 scaled_data <- cbind(data[1:2], as.data.frame(scale(data[3:length(data)])))
-get(load("results/GBC_benign.rfe_lasso_sig.RData"))
-get(load("results/wilcox.RData")) 
+
+###Getting results from previous analyses
+get(load("results/lasso_elastic_net_res.RData"))
+get(load("results/u-test_res.RData")) 
 wilcox_res <- as.data.frame(wilcox_res)
-get(load("results/t-test_results.RData"))
-get(load("results/pca_results.RData"))
-metadata <- read.csv2("data/MetaDATA_Ghada.csv",  header=TRUE, check.names = FALSE) %>%
-     dplyr::rename(resection_type = `Resect type GBC`) %>%
-     mutate(Death = gsub('alive', '0', Death)) %>%
-     mutate(Alb = na_if(Alb, "m")) %>%
-     mutate(CRP0 = na_if(CRP0, "m")) %>%
-     mutate_if(is.character, as.numeric) %>%
-     mutate_at("resection_type", as.character)
-metadata_prot <- get(load("results/somalogic_prot_info.RData"))
-
-
-
-
-
-
-
+get(load("results/t-test_res.RData"))
 
 
 
 ## ----all_sig_ptn--------------------------------------------------------------------------------------------------------------------------
-####proteins with significance p < 0.01
+####selected proteins with (filtering statistical significance p < 0.01 and adding machine learning resutls)
 sig_ptn <- 
   as.data.frame(wilcox_res) %>%
   filter(p.value <= 0.01) %>%
@@ -67,6 +55,8 @@ sig_ptn <-
               mutate(ML = TRUE),
             by = c("proteins" = "probes")) %>%
   dplyr::filter(proteins != "sample_id")
+
+###Dataset with only selected proteins
 sig_data <- cbind(data$group, scaled_data[,sig_ptn$proteins]) %>% 
   rename("group" = "data$group") %>%
   mutate_if(is.character, as.numeric) %>%
@@ -82,9 +72,6 @@ roc1 <- as.data.frame(scaled_data) %>%
 plot(as.data.frame(scaled_data) %>% 
   roc(group, O14832))
 power.roc.test(roc1)
-
-
-
 
 
 
@@ -150,16 +137,16 @@ for (subset_size in 1:length(protein_names)) {
   )
   all_combinations <- rbind(all_combinations, do.call(rbind, subset_results))
 }
-#   for (i in 1:ncol(combinations)) {
-#     subset_indices <- combinations[, i]
-#     auc_score <- calculate_auc_for_subset(subset_indices)
-#     subset_info <- data.frame(
-#       Subset = paste(subset_indices, collapse = ", "),
-#       AUC = auc_score
-#     )
-#     all_combinations <- rbind(all_combinations, subset_info)
-#   }
-# }
+   for (i in 1:ncol(combinations)) {
+     subset_indices <- combinations[, i]
+    auc_score <- calculate_auc_for_subset(subset_indices)
+    subset_info <- data.frame(
+          Subset = paste(subset_indices, collapse = ", "),
+      AUC = auc_score
+   )
+    all_combinations <- rbind(all_combinations, subset_info)
+  }
+ }
 all_combinations <- all_combinations[order(-as.numeric(all_combinations$AUC)), ]
 print(all_combinations)
 
