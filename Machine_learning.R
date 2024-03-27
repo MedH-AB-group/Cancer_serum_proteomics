@@ -12,8 +12,6 @@ library(skimr)
 library(pROC)
 
 
-
-
 ## ----read_data----------------------------------------------------------------------------------------------------------------------------
 ###getting tabular data and scaling the data
 data <- read.csv2("data/protein_screening.csv")
@@ -21,6 +19,7 @@ data <- data %>%
         mutate_if(is.character, as.numeric) %>%
         mutate_at("sample_id", as.character) %>%
         arrange(group) 
+###Scaling the data for machine learning 
 scaled_data <- cbind(data[1:2], as.data.frame(scale(data[3:length(data)])))
 
 
@@ -32,7 +31,8 @@ training <- scaled_data[inTrain,]
 nrow(training)
 testing  <- scaled_data[-inTrain,]
 nrow(testing)
-# skimmed <- skim(training) (takes long with many vars)
+# skimmed <- skim(training) (takes long with many vars)  ##This takes so much time for computations
+###Outcome vector for testing steps
 outcome_test <- testing %>%
            mutate(group = ifelse(group == '4', T, F)) %>%
            dplyr::select(group)
@@ -47,13 +47,13 @@ outcome <- training %>%
 ## ----optimum_alpha_lambda-----------------------------------------------------------------------------------------------------------------
 ###Regularization, finding best lambda for each value of alpha and controlling behaviour of alpha
 Alpha <- c(0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
-# # Find optimal lambda for each alpha
-# for (j in 1:length(Alpha)) {
-#     cv <- cv.glmnet(ptn_matrix, outcome$group, alpha = Alpha[j], nfolds = 10)
-#     # Access the optimal lambda (cv$lambda.min) for each alpha
-#     # You can also get other performance metrics from cv$cvm
-#     print(paste("Optimal lambda for alpha =", Alpha[j], ":", cv$lambda.min))
-# }
+# # Find optimal lambda for each alpha. Alpha = 1 is going to be used for lasso regression and we need to know what is the best lambda for that
+### Different alpha values are going to be used for elastic net and we need to know which lambda to use for those
+ for (j in 1:length(Alpha)) {
+     cv <- cv.glmnet(ptn_matrix, outcome$group, alpha = Alpha[j], nfolds = 10)
+     print(paste("Optimal lambda for alpha =", Alpha[j], ":", cv$lambda.min))
+ }
+# You can also get other performance metrics from cv$cvm
 # Find best alpha based on AIC and BIC values
 aic_values <- numeric(length(Alpha))
 bic_values <- numeric(length(Alpha))
@@ -86,9 +86,6 @@ lasso_coefficients = as.data.frame(lasso_coefficients) %>%
      filter(s1 != 0) %>%
      rownames_to_column("probes") %>%
      filter(!probes %in% c("index", "(Intercept)"))
-# save(lasso_coefficients, file= "results/probes_lasso_608ptn.RData")
-# save(lasso_coefficients, file = "results/probes_lasso.RData")
-get(load("results/probes_lasso.RData"))
 
 
 ## ----test_lasso---------------------------------------------------------------------------------------------------------------------------
@@ -97,26 +94,25 @@ predictions <- predict(lasso_model, newx = testing, s = 1)
 mse <- mean((outcome_test$group - predictions)^2)
 rmse <- sqrt(mse)
 r_squared <- 1 - mse / var(outcome_test$group)
+##Look at results using different parameters
 mse
 rmse
 r_squared
 
 
-## ----visualize----------------------------------------------------------------------------------------------------------------------------
+## ----visualize results----------------------------------------------------------------------------------------------------------------------------
 ###Visualize resutls
 plot_data <- data.frame(Actual = outcome_test$group, Predicted = predictions)
-# pdf(file = "results/Paper_illustratios/Lasso_test_res2.pdf")
+
 ggplot(plot_data, aes(x = Actual, y = s1)) +
     geom_point() +  # Scatter points
     geom_smooth(method = "lm", color = "red", se = FALSE) +  # Regression line
     labs(title = "LASSO model test results",
          x = "Actual",
          y = "Predicted")
- # while (!is.null(dev.list()))  dev.off()
-# pdf(file = "results/Paper_illustratios/Lasso_test_res1.pdf")
+
 plot(outcome_test$group, predictions, main = "LASSO model test results", xlab = "Actual", ylab = "Predicted") +
 abline(a = 0, b = 1, col = "red")  # Add a diagonal reference line
-# while (!is.null(dev.list()))  dev.off()
 
 
 ## ----lasso_roc----------------------------------------------------------------------------------------------------------------------------
@@ -125,21 +121,17 @@ roc_obj <- roc(outcome_test$group, predictions)
 plot(roc_obj, main = "ROC Curve", print.auc = TRUE, legacy.axes = TRUE)
 
 
-
-
 ## ----elastic_net--------------------------------------------------------------------------------------------------------------------------
 # Fit an Elastic Net model
 control <- trainControl(method="loocv")
 enet_fit <- train(ptn_matrix[,2:ncol(ptn_matrix)], ptn_matrix[,1], method = 'glmnet',  trControl = control)  ##method = "lm",
 enet_fit$results$lambda <- round(enet_fit$results$lambda, digits = 2) 
-# pdf(file = "results/Paper_illustratios/ELNET_lambda_cv.pdf")
 plot(enet_fit, xvar = "lambda", label = TRUE)
-# while (!is.null(dev.list()))  dev.off()
+
 # Cross-validate Elastic Net
 cv_fit <- cv.glmnet(x = ptn_matrix, y = outcome$group, alpha = 0.1)
-# pdf(file = "results/Paper_illustratios/ELNET_cv_fit.pdf")
 plot(cv_fit)
-# while (!is.null(dev.list()))  dev.off()
+
 
 
 ## ----test_EN------------------------------------------------------------------------------------------------------------------------------
@@ -153,25 +145,23 @@ rmse
 r_squared
 
 
-## ----visualize2---------------------------------------------------------------------------------------------------------------------------
+## ----visualize EN results---------------------------------------------------------------------------------------------------------------------------
 ###Results visualization
 plot_data <- data.frame(Actual = outcome_test$group, Predicted = predictions)
-# pdf(file = "results/Paper_illustratios/ELNET_test_res.pdf")
+
 ggplot(plot_data, aes(x = Actual, y = s1)) +
     geom_point() +  # Scatter points
     geom_smooth(method = "lm", color = "red", se = FALSE) +  # Regression line
     labs(title = "Elastic Net model test results",
          x = "Actual",
          y = "Predicted")
- # while (!is.null(dev.list()))  dev.off()
-# pdf(file = "results/Paper_illustratios/ELNET_test_res1.pdf")
+
 plot(outcome_test$group, predictions, main = "LASSO model test results", xlab = "Actual", ylab = "Predicted") +
 abline(a = 0, b = 1, col = "red")  # Add a diagonal reference line
-# while (!is.null(dev.list()))  dev.off()
 
 
 ## ----sig_feat-----------------------------------------------------------------------------------------------------------------------------
-####saving the resutls
+####saving the resutls in a tab format
 sig.feat <- rfe_features %>%
                         rownames_to_column("probes") %>%
                         # dplyr::select(probes) %>%
