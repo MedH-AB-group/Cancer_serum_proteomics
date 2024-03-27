@@ -21,18 +21,18 @@ Palette = c("#0cc0aa", "#a20655", "#b1d34f", "#553096", "#e4b5ff", "#0b522e", "#
 ## ----read_data-----------------------------------------------------------------------------------------------------------------------------------------
 ###Getting data from previous analysis
 metadata_prot <- get(load("results/somalogic_prot_info.RData"))
-get(load("results/wilcox.RData"))
-get(load("results/t-test_results.RData"))
-get(load("results/GBC_benign.rfe_lasso_sig.RData"))
-get(load("results/pca_results.RData"))
-ptn608 <- get(load("results/probes_lasso_608ptn.RData"))
-gda <- read.delim("/Users/ghada.nouairia/projects/Oscar_Jungholm_Fyfa/data/curated_gene_disease_associations.tsv.gz")
+get(load("results/u-test_res.RData"))
+get(load("results/t-test_res.RData"))
+get(load("results/lasso_elastic_net_res.RData"))
+ptn608 <- get(load("results/elastic_net_res.RData"))
+####Get these next 2 files from online (just google the file names, I didn't change them)
+gda <- read.delim("data/curated_gene_disease_associations.tsv.gz")
 wikipathways <- readPathwayGMT("data/wikipathways/wikipathways-20240210-gmt-Homo_sapiens.gmt")
 
 
 ## ----venndiag------------------------------------------------------------------------------------------------------------------------------------------
 ###combine and VennDiagram of all analyses
-ptn_lasso_comp <- ptn608 %>%
+ptn_lasso_comp <- ptn608 %>%    #######Elastic net results we are using here are 608 proteins (more proteins are needed for enrichment analysses)
                   select(probes) %>%
                   mutate(ptn608 = "TRUE") %>%
                   full_join(sig.feat %>%
@@ -55,15 +55,15 @@ ptn_lasso_comp <- ptn608 %>%
 ptn_lasso_comp <- ptn_lasso_comp %>%
                   rename("Elastic Net" = "ptn608") %>%
                   rename("U-test" = "Wilcoxon")
-# pdf(file = "results/Paper_illustratios/Venndiag_1027ptn.pdf")
+
 ggvenn(ptn_lasso_comp, c("Elastic Net", "U-test"), 
   fill_color = c("#e72525", "#b1d34f"),
   stroke_size = 0.5, set_name_size = 4)
-# while (!is.null(dev.list()))  dev.off()
+
 
 
 ## ----sig_ptn-------------------------------------------------------------------------------------------------------------------------------------------
-###Choose proteins by signficance (p < 0.05) and add ml results
+###Choose proteins by signficance (p < 0.05) and add ML results
 sig_ptn <- 
   as.data.frame(wilcox_res) %>%
   filter(p.value <= 0.05) %>%
@@ -80,9 +80,9 @@ sig_ptn <-
               select(probes) %>%
               mutate(Lasso = TRUE),
             by = c("proteins" = "probes")) %>%
-  full_join(ptn980 %>%
+  full_join(ptn608 %>%
               select(probes) %>%
-              mutate(ptn980 = "TRUE"),
+              mutate(ptn608 = "TRUE"),
             by = c("proteins" = "probes")) %>%
   dplyr::filter(proteins != "sample_id") %>%
   inner_join(metadata_prot %>%
@@ -118,10 +118,8 @@ barplot(ans.go, showCategory=15)
 dotplot(ans.go, showCategory=15) + ggtitle("Gene Ontology: Biological Process")
 upsetplot(ans.go)
 ans.go1 <- pairwise_termsim(ans.go)
-# pdf(file = "results/Paper_illustratios/GO_BP_network_1027ptn.pdf")
 emapplot(ans.go1, showCategory = 20)
-# while (!is.null(dev.list()))  dev.off()
-# pdf(file = "results/Paper_illustratios/GO_BP_1027ptn.pdf")
+
 ego <- ans.go %>% 
        mutate(richFactor = Count / as.numeric(sub("/\\d+", "", BgRatio)))
 ggplot(ego, showCategory = 15, 
@@ -135,7 +133,6 @@ ggplot(ego, showCategory = 15,
        xlab("Rich Factor") +
        ylab(NULL) +
        ggtitle("Gene Ontology based GSEA: Biological Process")
-# while (!is.null(dev.list()))  dev.off()
 
 
 ## ----go_enrichment_CC, message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------------
@@ -159,7 +156,7 @@ ans.go1 <- pairwise_termsim(ans.go)
 emapplot(ans.go1)
 ego <- ans.go %>% 
        mutate(richFactor = Count / as.numeric(sub("/\\d+", "", BgRatio)))
-# pdf(file = "results/Paper_illustratios/GO_CC_1027ptn.pdf")
+
 ggplot(ego, showCategory = 10, 
        aes(richFactor, fct_reorder(Description, Count))) +
        geom_segment(aes(xend=0, yend = Description)) +
@@ -171,7 +168,7 @@ ggplot(ego, showCategory = 10,
        xlab("Rich Factor") +
        ylab(NULL) +
        ggtitle("Gene Ontology GSEA in Cell Composits")
-# while (!is.null(dev.list()))  dev.off()
+
 ggplot(ego, showCategory = 15, 
        aes(Count, fct_reorder(Description, Count), fill=qvalue)) +
        geom_col() +
@@ -181,7 +178,7 @@ ggplot(ego, showCategory = 15,
        xlab("Normalized Enrichment Score") +
        ylab(NULL) +
        ggtitle("Gene Ontology enrichment in Cell Composits")
-# cowplot::plot_grid(p3, p4, ncol=2, labels=LETTERS[1:3])
+
 
 
 ## ----go_enrichment_MF, message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------------
@@ -202,12 +199,11 @@ barplot(ans.go, showCategory=15)
 dotplot(ans.go, showCategory=15) + ggtitle("GO based enrichment analysis (Molecular Function)")
 upsetplot(ans.go)
 ans.go1 <- pairwise_termsim(ans.go)
-# pdf(file = "results/Paper_illustratios/GO_MF_network_1027ptn.pdf")
 emapplot(ans.go1)
-# while (!is.null(dev.list()))  dev.off()
+
 ego <- ans.go %>% 
        mutate(richFactor = Count / as.numeric(sub("/\\d+", "", BgRatio)))
-# pdf(file = "results/Paper_illustratios/GO_MF_1027ptn.pdf")
+
 ggplot(ego, showCategory = 10, 
        aes(richFactor, fct_reorder(Description, Count))) +
        geom_segment(aes(xend=0, yend = Description)) +
@@ -219,7 +215,7 @@ ggplot(ego, showCategory = 10,
        xlab("Rich Factor") +
        ylab(NULL) +
        ggtitle("Gene Ontology based GSEA (Molecular Function)")
-# while (!is.null(dev.list()))  dev.off()
+
 ggplot(ego, showCategory = 10, 
        aes(Count, fct_reorder(Description, Count), fill=qvalue)) +
        geom_col() +
@@ -229,7 +225,7 @@ ggplot(ego, showCategory = 10,
        xlab("Normalized Enrichment Score") +
        ylab(NULL) +
        ggtitle("GO based enrichment analysis (Molecular Function)")
-# cowplot::plot_grid(p3, p4, ncol=2, labels=LETTERS[1:3])
+
 
 
 ## ----kegg_enrichment, message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------
@@ -251,7 +247,7 @@ ans.kegg1 <- pairwise_termsim(ans.kegg)
 emapplot(ans.kegg1)
 ego <- ans.kegg %>% 
        mutate(richFactor = Count / as.numeric(sub("/\\d+", "", BgRatio)))
-# pdf(file = "results/Paper_illustratios/KEGG_1027ptn.pdf")
+
 ggplot(ego, showCategory = 15, 
        aes(richFactor, fct_reorder(Description, Count))) +
        geom_segment(aes(xend=0, yend = Description)) +
@@ -263,8 +259,7 @@ ggplot(ego, showCategory = 15,
        xlab("Rich Factor") +
        ylab(NULL) +
        ggtitle("KEGG based pathway analysis")
-# while (!is.null(dev.list()))  dev.off()
-# pdf(file = "results/Paper_illustratios/KEGG_barplot_1027ptn.pdf")
+
 ggplot(ego, showCategory = 15,   
        aes(Count, fct_reorder(Description, Count), fill=p.adjust)) +
        geom_col() +
@@ -274,7 +269,7 @@ ggplot(ego, showCategory = 15,
        xlab("Protein count") +
        ylab(NULL) +
        ggtitle("Pathway analysis based on KEGG")
-# while (!is.null(dev.list()))  dev.off()
+
 
 
 ## ----sig_genes, message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------
@@ -312,7 +307,7 @@ ego <- ans.wkp %>%
        # filter(str_detect(Description, "Calcium")) %>%
        # filter(p.adjust < 0.001, Count > 10) %>%
        mutate(richFactor = Count / as.numeric(sub("/\\d+", "", BgRatio)))
-# pdf(file = "results/Paper_illustratios/Wikipathwyas_1027ptn.pdf")
+
 ggplot(ego, showCategory = 15, 
        aes(richFactor, fct_reorder(Description, Count))) +
        geom_segment(aes(xend=0, yend = Description)) +
@@ -324,7 +319,6 @@ ggplot(ego, showCategory = 15,
        xlab("Rich Factor") +
        ylab(NULL) +
        ggtitle("Wikipathways based enrichment analysis")
-# while (!is.null(dev.list()))  dev.off()
 
 ggplot(ego, showCategory = 15, 
        aes(Count, fct_reorder(Description, Count), fill=qvalue)) +
@@ -344,6 +338,7 @@ disease2name <- gda[, c("diseaseId", "diseaseName")]
 sig.ptn.list <- sig_ptn %>%
                  select(EntrezGeneID)
 sig.ptn <- sig.ptn.list[[1]]
+
 ##Computing enrichment
 ans.dis <- enricher(sig.ptn, TERM2GENE=disease2gene, TERM2NAME=disease2name)
 datatable(as.data.frame(ans.dis))
@@ -354,7 +349,7 @@ datatable(as.data.frame(ans.dis))
 ## ----plot2, message=FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------
 ###Plotting
 ego <- ans.dis %>% mutate(richFactor = Count / as.numeric(sub("/\\d+", "", BgRatio))) %>% filter(p.adjust < 0.032)
-# pdf(file = "results/Paper_illustratios/DisGeNet_1027ptn.pdf")
+
 ggplot(ego, showCategory = 15, 
        aes(richFactor, fct_reorder(Description, Count))) +
        geom_segment(aes(xend=0, yend = Description)) +
@@ -366,8 +361,7 @@ ggplot(ego, showCategory = 15,
        xlab("Rich Factor") +
        ylab(NULL) +
        ggtitle("Disease association enrichment analysis")
-# while (!is.null(dev.list()))  dev.off()
-# pdf(file = "results/Paper_illustratios/DisGeNet_barplot_1027ptn.pdf")
+
 ggplot(ego, showCategory = 15,   
        aes(Count, fct_reorder(Description, Count), fill=p.adjust)) +
        geom_col() +
@@ -377,5 +371,5 @@ ggplot(ego, showCategory = 15,
        xlab("Protein count") +
        ylab(NULL) +
        ggtitle("Disease association analysis")
-# while (!is.null(dev.list()))  dev.off()
+
 
