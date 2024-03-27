@@ -11,14 +11,15 @@ library(QFeatures)
 
 
 ## ----read_data----------------------------------------------------------------------------------------------------------------------------
-###Get data in tabular form and calculate scaled data
+###Get data in tabular form
 data <- read.csv2("data/protein_screening.csv")
 data <- data %>%
         mutate_if(is.character, as.numeric) %>%
         mutate_at(c("sample_id", "group"), as.character) %>%
         arrange(group) 
-scaled_data <- cbind(data[1:2], as.data.frame(scale(data[3:length(data)])))
-get(load("results/wilcox.RData"))
+
+###results from mann whitney test (see Mann_Whitney_test.R)
+get(load("results/u-test-res.RData"))
 
 
 ## ----intensities--------------------------------------------------------------------------------------------------------------------------
@@ -28,19 +29,19 @@ sig_prot_05 <- as.data.frame(wilcox_res) %>%
                 filter(p.value < 0.005)
 ##log2 transformation necessary for limma density plot
 data_log2 <- cbind(data[1:2], as.data.frame(log2(data[3:length(data)])))
- # pdf(file = "results/Paper_illustratios/protein_distributions_plot.pdf") 
+
 limma::plotDensities(data_log2[,sig_prot_05$proteins])
- # while (!is.null(dev.list()))  dev.off()
+
 
 
 ## ----protein_distrib----------------------------------------------------------------------------------------------------------------------
 ####Boxplots of the significant proteins with 0.005
-# pdf(file = "results/Paper_illustratios/protein_distributions_less.pdf") 
+
 boxplot(data_log2[,sig_prot_05$proteins],
     col = palette()[-1],
     main = "Protein distribtutions", ylab = "Protein concentration (log2)"
 )
- # while (!is.null(dev.list()))  dev.off()
+
 
 
 ## ----MDS----------------------------------------------------------------------------------------------------------------------------------
@@ -61,8 +62,10 @@ ttest <- function(df, grp1, grp2) {
   y = as.numeric(y)  
   results = t.test(x, y)
   results$p.value}
+
 ##add p values
 p_value = apply(t_data, 1, ttest, grp1 = c(1:38), grp2 = c(39:82))
+
 ##VIsualize histograms
 hist(p_value)
 
@@ -85,12 +88,12 @@ hist(FC, xlab = "log2 Fold Change of benign vs GBC")
 ## ----comb_results-------------------------------------------------------------------------------------------------------------------------
 ###Combine all calculated parameters in one table and save it
 Ttest_res = as.data.frame(cbind(FC, p_value, adj_p_value))
-save(Ttest_res, file = "results/t-test_results.RData")
+save(Ttest_res, file = "results/t-test_res.RData")
 
 
 ## ----volcano------------------------------------------------------------------------------------------------------------------------------
 ###Volcano plots for T-test and U-test
-# pdf(file = "results/Paper_illustratios/volcano_plot_0.05.pdf")
+
 ggplot(Ttest_res,
     aes(x = FC, y = -log10(p_value), color = p_value < 0.05)) +
     xlab("Fold change") + ylab ("-log10 (p value)") +
@@ -98,11 +101,11 @@ ggplot(Ttest_res,
     scale_color_manual(values = alpha(c("royalblue4", "hotpink"), 0.5)) +
     theme_minimal() +
     ggtitle("Protein frequency difference between benign and GBC (U-test)")
- # while (!is.null(dev.list()))  dev.off()
+
 ggplot(as.data.frame(wilcox_res),
     aes(x = Fold.change, y = -log10(p.value), color = p.value < 0.05)) +
     geom_point(cex = 2.5) +
     scale_color_manual(values = alpha(c("royalblue4", "hotpink"), 0.5)) +
     theme_minimal() +
-    ggtitle("Wilcoxon test based volcano plot")
+    ggtitle("Mann Whitney test based volcano plot")
 
