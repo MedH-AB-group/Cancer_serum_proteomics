@@ -217,6 +217,7 @@ champ.SVD(beta = as.data.frame(t(data %>%
                                    # filter(group == 0) %>%
                                    arrange(sample_id) %>%
                                    select(-sample_id))), 
+## pd is the metadata (group and other clinical information as a data-frame)
           pd = as.data.frame(metadata %>% 
                               mutate_at("BMI", as.integer) %>%
                               mutate(bmi_cat = cut(BMI, breaks = c(0, 18, 25, 30, 35, 90), labels = c("<18", "18-25", "25-30", "30-35", ">35"))) %>%
