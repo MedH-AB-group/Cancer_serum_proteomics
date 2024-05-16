@@ -84,7 +84,7 @@ wilcox_res <- apply(eset, 1, function (x) {
 wilcox_res <- cbind(wilcox_res,
                 p.adjust(wilcox_res, method = "BH"),
                 apply(eset, 1, function (x) {
-                      mean(x[seq_along(lev1)]) - mean(x[(length(lev1) + 1):ncol(eset)])
+                      mean(log2(x[seq_along(lev1)])) - mean(log2(x[(length(lev1) + 1):ncol(eset)]))
                       }),
                 rowMeans(eset[, seq_along(lev1)]),
                 rowMeans(eset[, (length(lev1) + 1):ncol(eset)]))
